@@ -1,0 +1,6 @@
+bam_files:
+    701: TBI_701_fastq_to_bam.bam
+    702: TBI_702_fastq_to_bam.bam
+    703: TBI_703_fastq_to_bam.bam
+    705: TBI_705_fastq_to_bam.bam
+    706: TBI_706_fastq_to_bam.bam
