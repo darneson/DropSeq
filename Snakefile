@@ -1,7 +1,5 @@
 #to submit:
-#  snakemake dirs
 #  snakemake -j 100 --cluster "qsub {params.sge_opts}" --forceall
-#  have to make log directories to submit --> otherwise wont work
 
 #generate flowchart:
 # snakemake --dag Output/{701,702,703,705,706}/gene_exon_tagged.dge.txt.gz | dot -Tsvg > flowchart.svg
@@ -13,26 +11,29 @@
 configfile: "config.yaml"
 ALL_SAMPLES = config["bam_files"]
 
-#Make log directories
-DIRS = ['logs/','benchmarks/','logs/tag_cells','logs/tag_molecules','logs/filter_bam','logs/trim_starting_sequence','logs/trim_poly_a','logs/sam_to_fastq',
-'logs/star','logs/sort_aligned','logs/merge_bam','logs/gene_exon_tagged','logs/synth_err','logs/tag_hist','logs/kneeplot','logs/dig_expr','logs/report']
+###################################
+#Make log directories --> can do this in python
+DIRS = ['logs/','benchmarks/','fastq_to_bam','logs/dig_expr','logs/duplicate_umi','logs/fastq_to_bam','logs/filter_bam','logs/gene_exon_tagged','logs/kneeplot','logs/merge_bam',
+'logs/report','logs/sam_to_fastq','logs/sort_aligned','logs/star','logs/synth_err','logs/tag_cells','logs/tag_hist','logs/tag_molecules','logs/trim_poly_a','logs/trim_starting_sequence']
 
 for dir in DIRS:
     if not os.path.exists(dir):
         os.makedirs(dir)
 
+###################################
+
 ##### email/job title #####
 email = "darneson@ucla.edu"
-job_label = "TBI"
+job_label = "PigSet1"
 
 ##### Important Parameters #####
-Number_Barcodes = "2000"   #Double number of expected cells for detect bead synthesis errors
-Number_Core_Barcodes = "1000"
+Number_Barcodes = "12000"   #Double number of expected cells for detect bead synthesis errors
+Number_Core_Barcodes = "6000"
 
 ##### reference files #####
-STARREFDIR = '/u/home/d/darneson/nobackup-xyang123/DropSeq/Star_Index/mm10'
-REF_SEQ = '/u/home/d/darneson/shared-project/datasets/Drop_Seq/mm10_reference/mm10.fasta'
-REF_FLAT = '/u/home/d/darneson/shared-project/datasets/Drop_Seq/mm10_reference/mm10.refFlat'
+STARREFDIR = '/u/home/d/darneson/nobackup-xyang123/DropSeq/Star_Index/Sscrofa11'
+REF_SEQ = '/u/home/d/darneson/nobackup-xyang123/DropSeq/ReferenceGenomes/Pig/Ensembl/Sus_scrofa.Sscrofa11.fa'
+GTF_FILE = '/u/home/d/darneson/nobackup-xyang123/DropSeq/ReferenceGenomes/Pig/Ensembl/Sus_scrofa.Sscrofa11.gtf'
 
 ##### TOOLS #####
 DropSeqTools = "/u/home/d/darneson/shared-project/tools/Drop_Seq/Drop-seq_tools-1.12/"
@@ -42,24 +43,47 @@ TrimStartingSequence = DropSeqTools+"TrimStartingSequence"
 PolyATrimmer = DropSeqTools+"PolyATrimmer"
 TagReadWithGeneExon = DropSeqTools+"TagReadWithGeneExon"
 DetectBeadSynthesisErrors = DropSeqTools+"DetectBeadSynthesisErrors"
+GatherMolecularBarcodeDistributionByGene = DropSeqTools+"GatherMolecularBarcodeDistributionByGene"
 BAMTagHistogram = DropSeqTools+"BAMTagHistogram"
 DigitalExpression = DropSeqTools+"DigitalExpression"
 picard_jar=DropSeqTools+'/3rdParty/picard/picard.jar'
 STAR='/u/home/d/darneson/shared-project/tools/Drop_Seq/STAR-2.5.0c/bin/Linux_x86_64/STAR'
+JAVA_distro='/u/project/xyang123/shared/tools/Drop_Seq/jdk1.8.0_73/jre/bin/java'
 
 rule all:
     input:
         # expand("Output/{sample}/aligned.sorted.bam", sample = config["bam_files"])
-        "report.html"
+        # "report.html"
+        expand("Output/{sample}/gene_exon_tagged.dge.txt.gz", sample = config["bam_files"])
+        # expand("Output/{sample}/duplicate_umi.txt", sample = config["bam_files"])
 
+# Stage 0: fastq to bam
+rule fastq_to_bam:
+    input:
+        fastq1="Input/{sample}.Read_1.fastq",
+        fastq2="Input/{sample}.Read_2.fastq"
+    output:
+        bam="Output/{sample}/{sample}_fastq_to_bam.bam"
+    params: sge_opts="-cwd -j y -l h_data=12G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/fastq_to_bam -e logs/fastq_to_bam"
+    benchmark:
+        "benchmarks/{sample}.fastq_to_bam.benchmark.txt"
+    shell:
+        """
+        {JAVA_distro} -jar {picard_jar} FastqToSam \
+        F1={input.fastq1} \
+        F2={input.fastq2} \
+        O={output.bam} \
+        SM={wildcards.sample} \
+        SORT_ORDER=queryname
+        """
 # Stage 1: pre-alignment tag and trim
 rule tag_cells:
     input:
-        bam="/u/home/d/darneson/nobackup-xyang123/DropSeq/TBI_Project/FastqToSam/TBI_{sample}_fastq_to_bam.bam",
+        bam="Output/{sample}/{sample}_fastq_to_bam.bam"
     output:
         summary="Output/{sample}/unaligned_tagged_Cellular.bam_summary.txt",
         tagged_cell="Output/{sample}/unaligned_tagged_Cell.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/tag_cells -e logs/tag_cells"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/tag_cells -e logs/tag_cells"
     benchmark:
         "benchmarks/{sample}.tag_cells.benchmark.txt"
     shell:
@@ -73,7 +97,7 @@ rule tag_molecules:
     output:
         summary="Output/{sample}/unaligned_tagged_Molecular.bam_summary.txt",
         tagged_molecule="Output/{sample}/unaligned_tagged_CellMolecular.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:35:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/tag_molecules -e logs/tag_molecules"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/tag_molecules -e logs/tag_molecules"
     benchmark:
         "benchmarks/{sample}.tag_molecules.benchmark.txt"
     shell:
@@ -86,7 +110,7 @@ rule filter_bam:
         tagged_molecule="Output/{sample}/unaligned_tagged_CellMolecular.bam"
     output:
         tagged_filtered="Output/{sample}/unaligned_tagged_filtered.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/filter_bam -e logs/filter_bam"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/filter_bam -e logs/filter_bam"
     benchmark:
         "benchmarks/{sample}.filter_bam.benchmark.txt"
     shell:
@@ -100,7 +124,7 @@ rule trim_starting_sequence:
     output:
         summary="Output/{sample}/adapter_trimming_report.txt",
         trimmed_smart="Output/{sample}/unaligned_tagged_trimmed_smart.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/trim_starting_sequence -e logs/trim_starting_sequence"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/trim_starting_sequence -e logs/trim_starting_sequence"
     benchmark:
         "benchmarks/{sample}.traim_starting_sequence.benchmark.txt"
     shell:
@@ -114,7 +138,7 @@ rule trim_poly_a:
     output:
         summary="Output/{sample}/polyA_trimming_report.txt",
         unmapped_bam="Output/{sample}/unaligned_mc_tagged_polyA_filtered.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/trim_poly_a -e logs/trim_poly_a"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/trim_poly_a -e logs/trim_poly_a"
     benchmark:
         "benchmarks/{sample}.trim_poly_a.benchmark.txt"
     shell:
@@ -128,7 +152,7 @@ rule sam_to_fastq:
         unmapped_bam="Output/{sample}/unaligned_mc_tagged_polyA_filtered.bam"
     output:
         fastq="Output/{sample}/unaligned_mc_tagged_polyA_filtered.fastq"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/sam_to_fastq -e logs/sam_to_fastq"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/sam_to_fastq -e logs/sam_to_fastq"
     benchmark:
         "benchmarks/{sample}.sam_to_fastq.benchmark.txt"
     shell:
@@ -141,15 +165,14 @@ rule star_alignment:
         fastq="Output/{sample}/unaligned_mc_tagged_polyA_filtered.fastq",
         starref=STARREFDIR
     output:
-        prefix="Output/{sample}/star.",
         aligned_sam="Output/{sample}/star.Aligned.out.sam"
-    params: sge_opts="-cwd -j y -pe shared 10 -l h_data=8G,highmem,h_rt=1:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/star -e logs/star"
+    params: sge_opts="-cwd -j y -pe shared 6 -l h_data=10G,h_rt=2:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/star -e logs/star"
     benchmark:
         "benchmarks/{sample}.star_alignment.benchmark.txt"
     shell:
         """
-        {STAR} --genomeDir {input.starref} --runThreadN 10 \
-        --readFilesIn {input.fastq} --outFileNamePrefix {output.prefix}
+        {STAR} --genomeDir {input.starref} --runThreadN 6 \
+        --readFilesIn {input.fastq} --outFileNamePrefix Output/{wildcards.sample}/star.
         """
 #Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
 rule sort_aligned:
@@ -158,7 +181,7 @@ rule sort_aligned:
     output:
         aligned_sorted_bam="Output/{sample}/aligned.sorted.bam",
         temp_dir="Output/{sample}/"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/sort_aligned -e logs/sort_aligned"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/sort_aligned -e logs/sort_aligned"
     benchmark:
         "benchmarks/{sample}.sort_aligned.benchmark.txt"
     shell:
@@ -174,7 +197,7 @@ rule merge_bam:
         reference_seq=REF_SEQ
     output:
         merged="Output/{sample}/merged.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/merge_bam -e logs/merge_bam"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/merge_bam -e logs/merge_bam"
     benchmark:
         "benchmarks/{sample}.merge_bam.benchmark.txt"
     shell:
@@ -185,16 +208,16 @@ rule merge_bam:
 rule tag_with_gene_exon:
     input:
         merged="Output/{sample}/merged.bam",
-        refflat=REF_FLAT
+        gtf=GTF_FILE
     output:
         gene_exon_tagged="Output/{sample}/star_gene_exon_tagged.bam"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/gene_exon_tagged -e logs/gene_exon_tagged"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/gene_exon_tagged -e logs/gene_exon_tagged"
     benchmark:
         "benchmarks/{sample}.tag_exon_with_gene.benchmark.txt"
     shell:
         """
         {TagReadWithGeneExon} TAG=GE CREATE_INDEX=true \
-        INPUT={input.merged} ANNOTATIONS_FILE={input.refflat} O={output.gene_exon_tagged}
+        INPUT={input.merged} ANNOTATIONS_FILE={input.gtf} O={output.gene_exon_tagged}
         """
 rule synth_err:
     input:
@@ -203,7 +226,7 @@ rule synth_err:
         gene_exon_tagged_clean="Output/{sample}/gene_exon_tagged_clean.bam",
         stats="Output/{sample}/my.synthesis_stats.txt",
         summary="Output/{sample}/my.synthesis_stats.summary.txt"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/synth_err -e logs/synth_err"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/synth_err -e logs/synth_err"
     benchmark:
         "benchmarks/{sample}.synth_err.benchmark.txt"
     shell:
@@ -211,12 +234,26 @@ rule synth_err:
         {DetectBeadSynthesisErrors} NUM_BARCODES={Number_Barcodes} PRIMER_SEQUENCE=AAGCAGTGGTATCAACGCAGAGTAC \
         I={input.gene_exon_tagged} O={output.gene_exon_tagged_clean} OUTPUT_STATS={output.stats} SUMMARY={output.summary}
         """
-rule tag_hist:
+rule duplicate_umi:
     input:
         gene_exon_tagged_clean="Output/{sample}/gene_exon_tagged_clean.bam"
     output:
+        duplicateUMI="Output/{sample}/duplicate_umi.txt"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/duplicate_umi -e logs/dumplicate_umi"
+    benchmark:
+        "benchmarks/{sample}.duplicate_umi.benchmark.txt"
+    shell:
+        """
+        {GatherMolecularBarcodeDistributionByGene} MIN_NUM_GENES_PER_CELL=500 \
+        I={input.gene_exon_tagged_clean} O={output.duplicateUMI}
+        """
+rule tag_hist:
+    input:
+        duplicateUMI="Output/{sample}/duplicate_umi.txt",
+        gene_exon_tagged_clean="Output/{sample}/gene_exon_tagged_clean.bam"
+    output:
         cell_readcounts="Output/{sample}/cell_readcounts.txt.gz"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/tag_hist -e logs/tag_hist"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/tag_hist -e logs/tag_hist"
     benchmark:
         "benchmarks/{sample}.tag_hist.benchmark.txt"
     shell:
@@ -224,27 +261,16 @@ rule tag_hist:
         {BAMTagHistogram} TAG=XC \
         I={input.gene_exon_tagged_clean} O={output.cell_readcounts}
         """
-rule kneeplot:
-    input:
-        cell_readcounts="Output/{sample}/cell_readcounts.txt.gz"
-    output: 
-        pdf="Output/{sample}/Kneeplot.pdf"
-    params: sge_opts="-cwd -j y -l h_data=2G,h_rt=0:10:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/kneeplot -e logs/kneeplot"
-    benchmark:
-        "benchmarks/{sample}.knee_plot.benchmark.txt"
-    shell:
-        """
-        module load R;
-        Rscript scripts/KneePlot.R {input.cell_readcounts} {output.pdf}
-        """
+
 rule dig_expr:
     input:
-        pdf="Output/{sample}/Kneeplot.pdf",
+        # pdf="Output/{sample}/Kneeplot.pdf",
+        cell_readcounts="Output/{sample}/cell_readcounts.txt.gz",
         gene_exon_tagged_clean="Output/{sample}/gene_exon_tagged_clean.bam"
     output:
         dge="Output/{sample}/gene_exon_tagged.dge.txt.gz",
         summary="Output/{sample}/gene_exon_tagged.dge.summary.txt"
-    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=0:45:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/dig_expr -e logs/dig_expr"
+    params: sge_opts="-cwd -j y -l h_data=8G,h_rt=6:00:00 -M "+email+" -m bea -N "+job_label+"{sample} -o logs/dig_expr -e logs/dig_expr"
     benchmark:
         "benchmarks/{sample}.dig_expr.benchmark.txt"
     shell:
@@ -264,4 +290,4 @@ rule report:
         "report.html"
     params: sge_opts="-cwd -j y -l h_data=2G,h_rt=0:10:00 -M "+email+" -m bea -N "+job_label+"_report -o logs/report -e logs/report"
     script:
-        "scripts/report.py"
+        "Scripts/report.py"
