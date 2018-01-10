@@ -1,6 +1,5 @@
 bam_files:
-    701: TBI_701_fastq_to_bam.bam
-    702: TBI_702_fastq_to_bam.bam
-    703: TBI_703_fastq_to_bam.bam
-    705: TBI_705_fastq_to_bam.bam
-    706: TBI_706_fastq_to_bam.bam
+    Pooled_PigDropSeq_SpinalCordControl1: Pooled_PigDropSeq_SpinalCordControl1.Read_1.fastq
+    Pooled_PigDropSeq_DRGControl1: Pooled_PigDropSeq_DRGControl1.Read_1.fastq
+    Pooled_PigDropSeq_SpinalCordIR1: Pooled_PigDropSeq_SpinalCordIR1.Read_1.fastq
+    Pooled_PigDropSeq_DRGIR1: Pooled_PigDropSeq_DRGIR1.Read_1.fastq
