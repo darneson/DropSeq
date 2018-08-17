@@ -1,11 +1,5 @@
-#to submit:
+#to submit job on cluster:
 #  snakemake -j 100 --cluster "qsub {params.sge_opts}" --forceall
-
-#generate flowchart:
-# snakemake --dag Output/{701,702,703,705,706}/gene_exon_tagged.dge.txt.gz | dot -Tsvg > flowchart.svg
-
-#to get all files in a directory
-# IDS, = glob_wildcards("thedir/{id}.fastq")
 
 #get samples
 configfile: "config.yaml"
