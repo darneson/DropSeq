@@ -1,14 +1,20 @@
 Description
 ------------------
-This pipeline is based on [snakemake](https://snakemake.readthedocs.io/en/stable/) and the dropseq tools provided by the [McCarroll Lab](http://mccarrolllab.com/dropseq/). It allows to go from raw data of your Single Cell RNA seq experiment until the final count matrix with QC plots along the way.
+This pipeline is based on [snakemake](https://snakemake.readthedocs.io/en/stable/) and the dropseq tools provided by the [McCarroll Lab](http://mccarrolllab.com/dropseq/). It starts from raw sequencing data and outputs digital gene expression matrices (DGEs).
 
-This is the tool we use in our lab to improve our wetlab protocol as well as provide an easy framework to reproduce and compare different experiments with different parameters.
+Updates
+------------------
+We have since moved on from using this method and now use an adapted version of [dropSeqPipe](https://github.com/Hoohm/dropSeqPipe) which we have found to be much more sophisticated and flexible than our [snakemake](https://snakemake.readthedocs.io/en/stable/) implementation of [Drop-seq Tools](http://mccarrolllab.com/download/1276/). 
 
-It uses STAR to map the reads. It is usable for any single cell protocol using two reads where the first one holds the Cell and UMI barcodes and the second read holds the RNA. Here is a non-exhausitve list of compatible protocols:
+We have made a number of changes to the original workflow:
 
-* Drop-Seq
-* SCRB-Seq
-* 10x Genomics
-* DroNc-seq
+1). We have adapted the [dropSeqPipe](https://github.com/Hoohm/dropSeqPipe) workflow to work on a [SGE Cluster Environment](http://star.mit.edu/cluster/docs/0.93.3/guides/sge.html), specifically the [UCLA Hoffman2 Cluster](https://www.hoffman2.idre.ucla.edu/computing/sge/).
 
-This package is trying to be as user friendly as possible. One of the hopes is that non-bioinformatician can make use of it without too much hassle. It will still require some command line execution, this is not going to be fully interactive package.
+2). We have made the workflow compatible with the new pipeline [dropEST](https://github.com/hms-dbmi/dropEst) which is capable of handling reads aligning to intronic regions and results in a large boost in cell number and genes/UMIs per cell in our hands.
+
+If you would like to use this updated [snakemake](https://snakemake.readthedocs.io/en/stable/) workflow, please go [here](https://github.com/darneson/dropSeqPipeDropEST).
+
+Requirements
+------------------
+STAR is used to map the reads.
+
