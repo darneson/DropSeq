@@ -16,5 +16,7 @@ If you would like to use this updated [snakemake](https://snakemake.readthedocs.
 
 Requirements
 ------------------
-STAR is used to map the reads.
+[snakemake](https://snakemake.readthedocs.io/en/stable/) is the workflow management which wraps [Drop-seq Tools](http://mccarrolllab.com/dropseq/) which runs everything
+[Drop-seq Tools](http://mccarrolllab.com/dropseq/) can be downloaded from [here](http://mccarrolllab.com/download/1276/) and a manual of the various functions is available [here](http://mccarrolllab.com/wp-content/uploads/2016/03/Drop-seqAlignmentCookbookv1.2Jan2016.pdf)
+[STAR](https://github.com/alexdobin/STAR) is used to map the reads.
 
