@@ -1,5 +1,5 @@
 bam_files:
     Sample1_Name: Sample1_Name.Read_1.fastq
-    Sample2_Name: Sample1_Name.Read_2.fastq
-    Sample3_Name: Sample1_Name.Read_3.fastq
-    Sample4_Name: Sample1_Name.Read_4.fastq
+    Sample2_Name: Sample2_Name.Read_1.fastq
+    Sample3_Name: Sample3_Name.Read_1.fastq
+    Sample4_Name: Sample4_Name.Read_1.fastq
