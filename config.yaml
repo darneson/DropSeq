@@ -1,5 +1,5 @@
 bam_files:
-    Pooled_PigDropSeq_SpinalCordControl1: Pooled_PigDropSeq_SpinalCordControl1.Read_1.fastq
-    Pooled_PigDropSeq_DRGControl1: Pooled_PigDropSeq_DRGControl1.Read_1.fastq
-    Pooled_PigDropSeq_SpinalCordIR1: Pooled_PigDropSeq_SpinalCordIR1.Read_1.fastq
-    Pooled_PigDropSeq_DRGIR1: Pooled_PigDropSeq_DRGIR1.Read_1.fastq
+    Sample1_Name: Sample1_Name.Read_1.fastq
+    Sample2_Name: Sample1_Name.Read_2.fastq
+    Sample3_Name: Sample1_Name.Read_3.fastq
+    Sample4_Name: Sample1_Name.Read_4.fastq
