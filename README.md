@@ -2,7 +2,7 @@ Description
 ------------------
 This pipeline is based on [snakemake](https://snakemake.readthedocs.io/en/stable/) and the dropseq tools provided by the [McCarroll Lab](http://mccarrolllab.com/dropseq/). It starts from raw sequencing data and outputs digital gene expression matrices (DGEs).
 
-[CURRENT VERSION HERE](https://github.com/darneson/dropSeqPipeDropEST)
+[WE ARE CURRENTLY USING AN UPDATED VERSION HERE](https://github.com/darneson/dropSeqPipeDropEST)
 
 Updates
 ------------------
