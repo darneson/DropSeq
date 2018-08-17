@@ -6,31 +6,22 @@ configfile: "config.yaml"
 ALL_SAMPLES = config["bam_files"]
 
 ###################################
-#Make log directories --> can do this in python
-DIRS = ['logs/','benchmarks/','fastq_to_bam','logs/dig_expr','logs/duplicate_umi','logs/fastq_to_bam','logs/filter_bam','logs/gene_exon_tagged','logs/kneeplot','logs/merge_bam',
-'logs/report','logs/sam_to_fastq','logs/sort_aligned','logs/star','logs/synth_err','logs/tag_cells','logs/tag_hist','logs/tag_molecules','logs/trim_poly_a','logs/trim_starting_sequence']
-
-for dir in DIRS:
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-###################################
 
 ##### email/job title #####
-email = "darneson@ucla.edu"
-job_label = "PigSet1"
+email = "yourEmailHere@domain.domain" #add your email here if you would like to get emails from the cluster
+job_label = "JobLabel" #add a job label if you would like to name jobs submitted to the cluster
 
 ##### Important Parameters #####
 Number_Barcodes = "12000"   #Double number of expected cells for detect bead synthesis errors
 Number_Core_Barcodes = "6000"
 
 ##### reference files #####
-STARREFDIR = '/u/home/d/darneson/nobackup-xyang123/DropSeq/Star_Index/Sscrofa11'
-REF_SEQ = '/u/home/d/darneson/nobackup-xyang123/DropSeq/ReferenceGenomes/Pig/Ensembl/Sus_scrofa.Sscrofa11.fa'
-GTF_FILE = '/u/home/d/darneson/nobackup-xyang123/DropSeq/ReferenceGenomes/Pig/Ensembl/Sus_scrofa.Sscrofa11.gtf'
+STARREFDIR = '/PATH/TO/STAR/INDEX/FOR/GENOME' #change me
+REF_SEQ = '/PATH/TO/REFERENCE/GENOME/FASTA/FILE' #change me
+GTF_FILE = '/PATH/TO/REFERENCE/GENOME/GTF/FILE' #change me
 
 ##### TOOLS #####
-DropSeqTools = "/u/home/d/darneson/shared-project/tools/Drop_Seq/Drop-seq_tools-1.12/"
+DropSeqTools = "/PATH/TO/DROPSEQTOOLS/FOLDER"
 TagBamWithReadSequenceExtended = DropSeqTools+"TagBamWithReadSequenceExtended"
 FilterBAM = DropSeqTools+"FilterBAM"
 TrimStartingSequence = DropSeqTools+"TrimStartingSequence"
@@ -41,15 +32,12 @@ GatherMolecularBarcodeDistributionByGene = DropSeqTools+"GatherMolecularBarcodeD
 BAMTagHistogram = DropSeqTools+"BAMTagHistogram"
 DigitalExpression = DropSeqTools+"DigitalExpression"
 picard_jar=DropSeqTools+'/3rdParty/picard/picard.jar'
-STAR='/u/home/d/darneson/shared-project/tools/Drop_Seq/STAR-2.5.0c/bin/Linux_x86_64/STAR'
-JAVA_distro='/u/project/xyang123/shared/tools/Drop_Seq/jdk1.8.0_73/jre/bin/java'
+STAR='/PATH/TO/STAR/EXECUTABLE' #change me
+JAVA_distro='/PATH/TO/JAVA/EXECUTABLE' #change me
 
 rule all:
     input:
-        # expand("Output/{sample}/aligned.sorted.bam", sample = config["bam_files"])
-        # "report.html"
         expand("Output/{sample}/gene_exon_tagged.dge.txt.gz", sample = config["bam_files"])
-        # expand("Output/{sample}/duplicate_umi.txt", sample = config["bam_files"])
 
 # Stage 0: fastq to bam
 rule fastq_to_bam:
@@ -272,16 +260,3 @@ rule dig_expr:
         {DigitalExpression} NUM_CORE_BARCODES={Number_Core_Barcodes} \
         INPUT={input.gene_exon_tagged_clean} OUTPUT={output.dge} SUMMARY={output.summary}
         """
-#can use this to make more sophisticated reports
-#http://pythonhosted.org/sphinxleash/
-# https://bitbucket.org/snakemake/snakemake/issues/86/embed-images-in-report
-rule report:
-    input:
-        Workflow="flowchart.svg",
-        T1=expand("Output/{sample}/unaligned_tagged_Cellular.bam_summary.txt", sample=config["bam_files"]),
-        T2=expand("Output/{sample}/unaligned_tagged_Molecular.bam_summary.txt", sample=config["bam_files"])
-    output:
-        "report.html"
-    params: sge_opts="-cwd -j y -l h_data=2G,h_rt=0:10:00 -M "+email+" -m bea -N "+job_label+"_report -o logs/report -e logs/report"
-    script:
-        "Scripts/report.py"
